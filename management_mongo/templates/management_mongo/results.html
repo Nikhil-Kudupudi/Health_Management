@@ -1,0 +1,109 @@
+
+
+<html>
+    <head>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+    
+            body {
+                font-family: Arial, sans-serif;
+                /* Sets the font for the body */
+            }
+    
+            nav {
+                background-color: #333;
+                /* Dark background for the navbar */
+                overflow: hidden;
+                /* Ensures everything stays within the navbar */
+            }
+    
+            .navbar {
+                list-style-type: none;
+                /* Removes default list styles */
+                text-align: center;
+                /* Centers the navbar items */
+            }
+    
+            .navbar li {
+                display: inline;
+                /* Displays the list items in a line */
+            }
+    
+            .navbar a {
+                display: inline-block;
+                /* Aligns links to the layout of the navbar */
+                color: white;
+                /* Text color */
+                padding: 14px 20px;
+                /* Padding around text */
+                text-decoration: none;
+                /* Removes underline from links */
+                transition: background-color 0.3s;
+                /* Smooth transition for hover effect */
+            }
+    
+            .navbar a:hover {
+                background-color: #ddd;
+                /* Light grey background on hover */
+                color: black;
+                /* Text color change on hover */
+            }
+        </style>
+    </head>
+    <nav>
+        <ul class="navbar">
+            <li><a href="/">Home</a></li>
+            <li><a href="/api/run_query">sql</a></li>
+            <li><a href="/api/run_mongoquery">mongo</a></li>
+    
+        </ul>
+    </nav>
+<form method="POST">
+    {% csrf_token %}
+    <label for="query">Enter Mongo db table name:</label><br>
+    <textarea id="query" name="query" rows="4" cols="50">{% if query %}{{ query }}{% endif %}</textarea><br>
+    <textarea id="columns" name="columns" rows="4" cols="50">{% if columns %}{{ columns }}{% endif %}</textarea><br>
+    <button type="submit">get all data </button>
+</form>
+
+<hr>
+
+<h1>Query Results</h1>
+{% if error %}
+<p style="color: rgb(191, 46, 78);">{{ error }}</p>
+{% endif %}
+
+{% if results %}
+{% for object in results %}
+<p>
+{{object.values}}
+</p>
+{% endfor %}
+
+<table border="1">
+    <thead>
+        <tr>
+            {% for column in columns %}
+            <th>{{ column }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in values %}
+        <tr>
+            
+            {% for value in row %}
+            <td>{{ value }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No results to display.</p>
+{% endif %}
+</html>
