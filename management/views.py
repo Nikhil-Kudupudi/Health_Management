@@ -66,8 +66,8 @@ h.HospitalID  ) as Frequency
 h.HospitalID 
         ) > ( 
             SELECT AVG(TotalAppointments) FROM ( 
-                SELECT COUNT(*) AS TotalAppointments FROM appointment GROUP 
-BY Hospital_ID 
+                SELECT COUNT(*) AS TotalAppointments FROM appointment 
+                GROUP BY Hospital_ID 
             ) AS AvgAppointments 
         );"""
     cursor=connection.cursor()
@@ -79,7 +79,7 @@ BY Hospital_ID
     # Generate the plot
     plt.figure(figsize=(8, 6))
     plt.bar(df['HospitalName'], df['Frequency'])
-    plt.title('Query Results Visualization')
+    plt.title('Hospitals with appointments more than average Appointments')
     plt.xlabel('Hospital Name')
     plt.ylabel('Number Of appointments')
     plt.grid(False)
@@ -107,10 +107,11 @@ group by AppointmentDate;
     # Generate the plot
     plt.figure(figsize=(8, 6))
     plt.plot(frequency.index, frequency.values)
-    plt.title('Query Results Visualization')
+    plt.title('Month wise number of appointments')
     plt.xlabel('AppointmentDate')
     plt.ylabel('Number Of appointments')
     plt.xticks(rotation=45)
+    plt.tight_layout()
     plt.grid(False)
     buffer = io.BytesIO()
     plt.savefig(buffer, format='png')
@@ -118,5 +119,99 @@ group by AppointmentDate;
     image2_base64 = base64.b64encode(buffer.read()).decode('utf-8')
     buffer.close()
     plt.close()
-    return render(request,'management/dashboard.html',{'charts':[image_base64,image2_base64]})
+
+    # number of doctors of each specialization
+    doctors_visits="""SELECT 
+    
+    doc.Specialization, 
+    COUNT(DISTINCT pd.Patient_ID) AS PatientsTreated, 
+    COUNT(DISTINCT diag.DiagnosisID) AS TotalDiagnoses, 
+    COUNT(DISTINCT pres.PresID) AS TotalPrescriptions, 
+    COUNT(DISTINCT rep.ReportID) AS TotalReports
+FROM 
+    Doctor doc
+    LEFT JOIN patient_doctor pd ON doc.DoctorID = pd.Doctor_ID
+    LEFT JOIN patient_diagnosis diag ON doc.DoctorID = diag.Doctor_ID
+    LEFT JOIN prescription pres ON doc.DoctorID = pres.DoctorPres_ID
+    LEFT JOIN reports rep ON diag.Patient_ID = rep.Patient_ReportID
+GROUP BY 
+    doc.Specialization;
+"""
+    cursor.execute(doctors_visits)
+    columns = [col[0] for col in cursor.description]  # Get column names
+    results = [dict(zip(columns, row)) for row in cursor.fetchall()]  
+    df=pd.DataFrame(results)
+    
+   # Generate the plot
+    plt.figure(figsize=(8, 6))
+    plt.pie(
+    df['PatientsTreated'], 
+    labels=df['Specialization'], 
+    autopct='%1.1f%%', 
+    startangle=140
+    )
+    plt.title('Percentage of patients treated in each Specialization')
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    image3_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    buffer.close()
+    plt.close()
+
+    numberof_doctors="""
+select  Specialization , COUNT(*) as Frequency from doctor
+group by Specialization
+"""
+    cursor.execute(numberof_doctors)
+    columns = [col[0] for col in cursor.description]  # Get column names
+    results = [dict(zip(columns, row)) for row in cursor.fetchall()]  
+    df=pd.DataFrame(results)
+    plt.figure(figsize=(8, 6))
+    plt.bar(
+    df['Specialization'],
+    df['Frequency']
+    )
+    plt.xticks(rotation=45)
+    plt.title('Number of doctors in each Specialization')
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    image4_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    buffer.close()
+    plt.close()
+
+
+    #grouped stack bar chart 
+    hospitalWise_transStatus="""
+select h.HospitalName as HospitalName,p.TranStatus as TransactionStatus, Count(*)  as StatusCount 
+from payment as p left outer join
+hospital h
+on h.HospitalID=p.Hospital_ID
+group by h.HospitalName,p.TranStatus
+"""
+    cursor.execute(hospitalWise_transStatus)
+    columns = [col[0] for col in cursor.description]  # Get column names
+    results = [dict(zip(columns, row)) for row in cursor.fetchall()]  
+    df=pd.DataFrame(results)
+    pivot_table = df.pivot(index='HospitalName', columns='TransactionStatus', values='StatusCount')
+    plt.figure(figsize=(10, 6))
+   # Plotting
+    pivot_table.plot(kind='bar', stacked=True, figsize=(10, 6))
+# Add titles and labels
+    plt.title('Payment Status by Hospital')
+    plt.xlabel('Transaction Status')
+    plt.ylabel('Number of transactions')
+    plt.legend(title='TransactionStatus')
+    plt.tight_layout()
+    plt.xticks(rotation=45)
+    plt.title('Number of doctors in each Specialization')
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    image5_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    buffer.close()
+    plt.close()
+    # day wise specialization 
+    return render(request,'management/dashboard.html',{'charts':[image_base64,image2_base64,image3_base64,image5_base64,image4_base64,]})
     # return  JsonResponse(results, safe=False)
+
